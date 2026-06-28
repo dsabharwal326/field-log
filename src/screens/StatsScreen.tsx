@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { C } from '../theme/colors';
 import { fetchMostCarried, fetchItemById, fetchInkStats, fetchCarryDatesForItem } from '../db/database';
 import { getItemLabel } from '../config/itemTypes';
 
@@ -170,49 +171,24 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  viewToggle: {
-    flexDirection: 'row',
-    margin: 16,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#4a90e2',
-  },
-  viewPill: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff' },
-  viewPillActive: { backgroundColor: '#4a90e2' },
-  viewPillText: { color: '#4a90e2', fontWeight: '600', fontSize: 14 },
-  viewPillTextActive: { color: '#fff' },
-  toggle: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  pill: { flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: '#f5f5f5' },
-  pillActive: { backgroundColor: '#e8f0fc' },
-  pillText: { color: '#666', fontWeight: '500', fontSize: 13 },
-  pillTextActive: { color: '#4a90e2', fontWeight: '700' },
+  container: { flex: 1, backgroundColor: C.bg },
+  viewToggle: { flexDirection: 'row', margin: 16, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: C.accent },
+  viewPill: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: C.bgCard },
+  viewPillActive: { backgroundColor: C.accent },
+  viewPillText: { color: C.accentBright, fontWeight: '600', fontSize: 14 },
+  viewPillTextActive: { color: C.text },
+  toggle: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  pill: { flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: C.bgMuted },
+  pillActive: { backgroundColor: C.bgCard },
+  pillText: { color: C.textMuted, fontWeight: '500', fontSize: 13 },
+  pillTextActive: { color: C.accentBright, fontWeight: '700' },
   list: { paddingHorizontal: 16, paddingBottom: 32 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  empty: { color: '#888', fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-  },
-  rank: { fontSize: 14, fontWeight: '700', color: '#aaa', width: 32 },
-  rowLabel: { flex: 1, fontSize: 16, fontWeight: '600' },
+  empty: { color: C.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.bgCard, borderRadius: 10, borderWidth: 1, borderColor: C.border, padding: 14, marginBottom: 10, gap: 12 },
+  rank: { fontSize: 14, fontWeight: '700', color: C.textMuted, width: 32 },
+  rowLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: C.text },
   streak: { fontSize: 13, color: '#f59e0b', fontWeight: '600' },
-  days: { fontSize: 14, color: '#4a90e2', fontWeight: '600' },
+  days: { fontSize: 14, color: C.accentBright, fontWeight: '600' },
   inkCount: { fontSize: 14, color: '#e8943a', fontWeight: '600' },
 });

@@ -12,6 +12,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { fetchItems, fetchCollections, fetchItemIdsInCollection, fetchAllTags, fetchItemIdsForTag, fetchMostCarried, Item } from '../db/database';
 import { ITEM_TYPE_MAP, getItemLabel } from '../config/itemTypes';
+import { C } from '../theme/colors';
 
 export default function LibraryList() {
   const navigation = useNavigation<any>();
@@ -120,7 +121,7 @@ export default function LibraryList() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by name, manufacturer, model…"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={C.textMuted}
           clearButtonMode="while-editing"
           autoCorrect={false}
         />
@@ -242,109 +243,32 @@ export default function LibraryList() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  empty: { fontSize: 16, color: '#888', textAlign: 'center' },
-  filterBar: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#4a90e2',
-    marginRight: 8,
-  },
-  filterChipActive: { backgroundColor: '#4a90e2' },
-  filterChipText: { color: '#4a90e2', fontSize: 13, fontWeight: '600' },
-  filterChipTextActive: { color: '#fff' },
-  searchBar: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 4,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  searchInput: {
-    backgroundColor: '#f2f2f7',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    fontSize: 15,
-    color: '#222',
-  },
-  collectionChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#7c5cbf',
-    marginRight: 8,
-  },
-  collectionChipActive: { backgroundColor: '#7c5cbf' },
-  collectionChipText: { color: '#7c5cbf', fontSize: 13, fontWeight: '600' },
-  collectionChipTextActive: { color: '#fff' },
-  tagChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2a9d8f',
-    marginRight: 8,
-  },
-  tagChipActive: { backgroundColor: '#2a9d8f' },
-  tagChipText: { color: '#2a9d8f', fontSize: 13, fontWeight: '600' },
-  tagChipTextActive: { color: '#fff' },
-  sortBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  sortPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f8f8f8',
-  },
-  sortPillActive: { borderColor: '#4a90e2', backgroundColor: '#eaf2ff' },
-  sortPillText: { fontSize: 12, color: '#666', fontWeight: '500' },
-  sortPillTextActive: { color: '#4a90e2', fontWeight: '700' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: C.bg },
+  empty: { fontSize: 16, color: C.textMuted, textAlign: 'center' },
+  filterBar: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: C.accent, marginRight: 8 },
+  filterChipActive: { backgroundColor: C.accent },
+  filterChipText: { color: C.accentBright, fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: C.text },
+  searchBar: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 4, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border },
+  searchInput: { backgroundColor: C.bgInput, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9, fontSize: 15, color: C.text },
+  collectionChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: C.purple, marginRight: 8 },
+  collectionChipActive: { backgroundColor: C.purple },
+  collectionChipText: { color: C.purple, fontSize: 13, fontWeight: '600' },
+  collectionChipTextActive: { color: C.text },
+  tagChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: C.teal, marginRight: 8 },
+  tagChipActive: { backgroundColor: C.teal },
+  tagChipText: { color: C.teal, fontSize: 13, fontWeight: '600' },
+  tagChipTextActive: { color: C.text },
+  sortBar: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.bg },
+  sortPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: C.bgMuted },
+  sortPillActive: { borderColor: C.accent, backgroundColor: C.bgCard },
+  sortPillText: { fontSize: 12, color: C.textMuted, fontWeight: '500' },
+  sortPillTextActive: { color: C.accentBright, fontWeight: '700' },
   list: { padding: 16 },
-  card: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: { fontSize: 16, fontWeight: '600', flex: 1 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#4a90e2',
-    flexShrink: 0,
-  },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  card: { backgroundColor: C.bgCard, padding: 16, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: C.border },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  title: { fontSize: 16, fontWeight: '600', flex: 1, color: C.text },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: C.accent, flexShrink: 0 },
+  badgeText: { color: C.text, fontSize: 11, fontWeight: '600' },
 });

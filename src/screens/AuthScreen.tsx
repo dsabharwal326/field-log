@@ -21,6 +21,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { auth } from '../config/firebase';
+import { C } from '../theme/colors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -177,59 +178,20 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#111',
-    letterSpacing: -0.5,
-    marginBottom: 6,
-  },
-  tagline: {
-    fontSize: 16,
-    color: '#888',
-    marginBottom: 52,
-  },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: C.bg },
+  appName: { fontSize: 36, fontWeight: '800', color: C.text, letterSpacing: -0.5, marginBottom: 6 },
+  tagline: { fontSize: 16, color: C.textMuted, marginBottom: 52 },
   buttonStack: { width: '100%', gap: 12 },
   appleButton: { width: '100%', height: 50 },
-  oauthButton: {
-    width: '100%',
-    height: 50,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleButton: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#ddd' },
-  googleButtonText: { fontSize: 15, fontWeight: '600', color: '#222' },
-  emailButton: { backgroundColor: '#4a90e2' },
-  emailButtonText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  title: { fontSize: 26, fontWeight: '700', marginBottom: 28, alignSelf: 'flex-start' },
-  input: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-  },
-  primaryButton: {
-    width: '100%',
-    backgroundColor: '#4a90e2',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  oauthButton: { width: '100%', height: 50, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  googleButton: { backgroundColor: C.bgCard, borderWidth: 1.5, borderColor: C.border },
+  googleButtonText: { fontSize: 15, fontWeight: '600', color: C.text },
+  emailButton: { backgroundColor: C.accent },
+  emailButtonText: { fontSize: 15, fontWeight: '600', color: C.text },
+  title: { fontSize: 26, fontWeight: '700', marginBottom: 28, alignSelf: 'flex-start', color: C.text },
+  input: { width: '100%', borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginBottom: 12, backgroundColor: C.bgInput, color: C.text },
+  primaryButton: { width: '100%', backgroundColor: C.accent, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  primaryButtonText: { color: C.text, fontSize: 15, fontWeight: '700' },
   linkRow: { marginTop: 16 },
-  link: { color: '#4a90e2', fontSize: 14 },
+  link: { color: C.accentBright, fontSize: 14 },
 });
