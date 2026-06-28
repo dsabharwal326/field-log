@@ -31,7 +31,13 @@
     "plugins": [
       "expo-sqlite",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "iosDisplayInForeground": true
+        }
+      ]
     ]
   }
 }

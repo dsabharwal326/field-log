@@ -48,6 +48,40 @@ type LogEntry = {
   created_at: string;
 };
 
+function computeStreak(sortedDates: string[]): { current: number; longest: number } {
+  if (sortedDates.length === 0) return { current: 0, longest: 0 };
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const set = new Set(sortedDates);
+
+  // current streak: count backwards from today
+  let current = 0;
+  let cursor: string | null = set.has(today) ? today : set.has(yesterday) ? yesterday : null;
+  while (cursor !== null && set.has(cursor)) {
+    current++;
+    const d = new Date(cursor);
+    d.setDate(d.getDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+
+  // longest streak
+  let longest = 0;
+  let run = 1;
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = new Date(sortedDates[i - 1]);
+    const curr = new Date(sortedDates[i]);
+    const diff = (curr.getTime() - prev.getTime()) / 86400000;
+    if (diff === 1) {
+      run++;
+      longest = Math.max(longest, run);
+    } else {
+      run = 1;
+    }
+  }
+  longest = Math.max(longest, run, current);
+  return { current, longest };
+}
+
 function CarryHeatmap({ carryDates }: { carryDates: Set<string> }) {
   const WEEKS = 13;
   const today = new Date();
@@ -112,6 +146,7 @@ export default function ItemDetailScreen() {
   const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([]);
   const [newTag, setNewTag] = useState('');
   const [carryDates, setCarryDates] = useState<Set<string>>(new Set());
+  const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -121,7 +156,10 @@ export default function ItemDetailScreen() {
       fetchCollections().then(setAllCollections);
       fetchTagsForItem(itemId).then(setItemTags);
       fetchAllTags().then(setAllTags);
-      fetchCarryDatesForItem(itemId).then((dates) => setCarryDates(new Set(dates)));
+      fetchCarryDatesForItem(itemId).then((dates) => {
+        setCarryDates(new Set(dates));
+        setStreak(computeStreak(dates));
+      });
     }, [itemId, item_type])
   );
 
@@ -244,6 +282,19 @@ export default function ItemDetailScreen() {
       )}
 
       <CarryHeatmap carryDates={carryDates} />
+
+      {(streak.current > 0 || streak.longest > 0) && (
+        <View style={styles.streakRow}>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakNum}>{streak.current}</Text>
+            <Text style={styles.streakLabel}>day streak</Text>
+          </View>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakNum}>{streak.longest}</Text>
+            <Text style={styles.streakLabel}>best streak</Text>
+          </View>
+        </View>
+      )}
 
       <Text style={styles.header}>{config?.label ?? item_type}</Text>
 
@@ -410,6 +461,10 @@ const styles = StyleSheet.create({
   secondaryText: { fontSize: 14, fontWeight: '600', color: '#333' },
   deleteButton: { borderColor: '#e25555' },
   deleteText: { color: '#e25555' },
+  streakRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  streakBadge: { flex: 1, backgroundColor: '#1a1a2e', borderRadius: 10, padding: 14, alignItems: 'center' },
+  streakNum: { fontSize: 28, fontWeight: '800', color: '#4a90e2' },
+  streakLabel: { fontSize: 11, color: '#aaa', marginTop: 2 },
   header: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
   sectionHeader: {
     fontSize: 13,

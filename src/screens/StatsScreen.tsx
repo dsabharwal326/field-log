@@ -9,8 +9,24 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchMostCarried, fetchItemById, fetchInkStats } from '../db/database';
+import { fetchMostCarried, fetchItemById, fetchInkStats, fetchCarryDatesForItem } from '../db/database';
 import { getItemLabel } from '../config/itemTypes';
+
+function computeCurrentStreak(sortedDates: string[]): number {
+  if (sortedDates.length === 0) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const set = new Set(sortedDates);
+  let cursor: string | null = set.has(today) ? today : set.has(yesterday) ? yesterday : null;
+  let count = 0;
+  while (cursor && set.has(cursor)) {
+    count++;
+    const d = new Date(cursor);
+    d.setDate(d.getDate() - 1);
+    cursor = d.toISOString().slice(0, 10);
+  }
+  return count;
+}
 
 type RankedRow = {
   rank: number;
@@ -18,6 +34,7 @@ type RankedRow = {
   item_type: string;
   days_carried: number;
   label: string;
+  streak: number;
 };
 
 function sinceDate30() {
@@ -42,9 +59,13 @@ export default function StatsScreen() {
 
     const resolved = await Promise.all(
       raw.map(async (r, i) => {
-        const item = await fetchItemById(r.item_id);
+        const [item, dates] = await Promise.all([
+          fetchItemById(r.item_id),
+          fetchCarryDatesForItem(r.item_id),
+        ]);
         const label = item ? getItemLabel(item) : r.item_id;
-        return { rank: i + 1, ...r, label };
+        const streak = computeCurrentStreak(dates);
+        return { rank: i + 1, ...r, label, streak };
       })
     );
 
@@ -112,6 +133,9 @@ export default function StatsScreen() {
                 <View style={styles.row}>
                   <Text style={styles.rank}>#{item.rank}</Text>
                   <Text style={styles.rowLabel} numberOfLines={1}>{item.label}</Text>
+                  {item.streak > 0 && (
+                    <Text style={styles.streak}>{item.streak}🔥</Text>
+                  )}
                   <Text style={styles.days}>{item.days_carried}d</Text>
                 </View>
               )}
@@ -188,6 +212,7 @@ const styles = StyleSheet.create({
   },
   rank: { fontSize: 14, fontWeight: '700', color: '#aaa', width: 32 },
   rowLabel: { flex: 1, fontSize: 16, fontWeight: '600' },
+  streak: { fontSize: 13, color: '#f59e0b', fontWeight: '600' },
   days: { fontSize: 14, color: '#4a90e2', fontWeight: '600' },
   inkCount: { fontSize: 14, color: '#e8943a', fontWeight: '600' },
 });

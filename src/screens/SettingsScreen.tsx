@@ -4,11 +4,18 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
   StyleSheet,
 } from 'react-native';
+import {
+  getReminderSettings,
+  scheduleCarryReminder,
+  cancelCarryReminder,
+  requestNotificationPermission,
+} from '../utils/notifications';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import {
@@ -22,6 +29,9 @@ export default function SettingsScreen() {
   const [collections, setCollections] = useState<{ id: string; name: string; description: string | null }[]>([]);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(20);
+  const [reminderMinute, setReminderMinute] = useState(0);
 
   const { user, signOut } = useAuth();
 
@@ -40,7 +50,36 @@ export default function SettingsScreen() {
     }
   };
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+    getReminderSettings().then(({ enabled, hour, minute }) => {
+      setReminderEnabled(enabled);
+      setReminderHour(hour);
+      setReminderMinute(minute);
+    });
+  }, []);
+
+  const handleToggleReminder = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('Permission needed', 'Please enable notifications in Settings to use carry reminders.');
+        return;
+      }
+      await scheduleCarryReminder(reminderHour, reminderMinute);
+    } else {
+      await cancelCarryReminder();
+    }
+    setReminderEnabled(value);
+  };
+
+  const handleUpdateReminderTime = async (hour: number, minute: number) => {
+    setReminderHour(hour);
+    setReminderMinute(minute);
+    if (reminderEnabled) {
+      await scheduleCarryReminder(hour, minute);
+    }
+  };
 
   const handleAdd = async () => {
     const name = newName.trim();
@@ -87,6 +126,37 @@ export default function SettingsScreen() {
       <Text style={styles.exportHint}>
         Saves a JSON file you can AirDrop, email, or save to Files. Your data is also included in iCloud device backups automatically.
       </Text>
+
+      <Text style={[styles.sectionHeader, { marginTop: 32 }]}>Notifications</Text>
+      <View style={styles.reminderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reminderTitle}>Daily carry reminder</Text>
+          <Text style={styles.reminderSub}>
+            {reminderEnabled
+              ? `Reminds you at ${String(reminderHour).padStart(2, '0')}:${String(reminderMinute).padStart(2, '0')} every day`
+              : 'Off'}
+          </Text>
+        </View>
+        <Switch value={reminderEnabled} onValueChange={handleToggleReminder} />
+      </View>
+      {reminderEnabled && (
+        <View style={styles.timeRow}>
+          <Text style={styles.timeLabel}>Time</Text>
+          <View style={styles.timePickers}>
+            {[18, 19, 20, 21, 22].map((h) => (
+              <Pressable
+                key={h}
+                style={[styles.timePill, reminderHour === h && styles.timePillActive]}
+                onPress={() => handleUpdateReminderTime(h, reminderMinute)}
+              >
+                <Text style={[styles.timePillText, reminderHour === h && styles.timePillTextActive]}>
+                  {h > 12 ? `${h - 12}pm` : `${h}am`}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
 
       <Text style={[styles.sectionHeader, { marginTop: 32 }]}>Collections</Text>
 
@@ -208,4 +278,29 @@ const styles = StyleSheet.create({
   exportButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   exportHint: { fontSize: 12, color: '#999', lineHeight: 18, marginBottom: 8 },
   addButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    marginBottom: 8,
+    gap: 12,
+  },
+  reminderTitle: { fontSize: 15, fontWeight: '600', color: '#222' },
+  reminderSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  timeRow: { marginBottom: 8 },
+  timeLabel: { fontSize: 13, color: '#666', marginBottom: 8 },
+  timePickers: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  timePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#f5f5f5',
+  },
+  timePillActive: { backgroundColor: '#4a90e2', borderColor: '#4a90e2' },
+  timePillText: { fontSize: 13, color: '#444', fontWeight: '500' },
+  timePillTextActive: { color: '#fff', fontWeight: '700' },
 });
