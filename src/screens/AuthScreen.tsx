@@ -25,7 +25,7 @@ import { auth } from '../config/firebase';
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_WEB_CLIENT_ID = '987730931157-mamj2vf7c6nlteqkbrq6fsdfo2rf0nip.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '987730931157-mamj2vf7c6nlteqkbrq6fsdfo2rf0nip.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '987730931157-6f067fjcrqcn3jnj12d6vlionj77e2et.apps.googleusercontent.com';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'landing' | 'email'>('landing');
