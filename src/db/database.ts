@@ -2,215 +2,442 @@ import * as SQLite from 'expo-sqlite';
 
 const db = SQLite.openDatabaseSync('fieldlog.db');
 
-/**
- * Initialize all tables.
- * This is non-destructive and safe to call on app start.
- */
+export type LogEntryType = 'carried' | 'maintenance' | 'note' | 'ink_change' | 'config_change';
+
+export type Item = {
+  id: string;
+  item_type: string;
+  name: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  variant: string | null;
+  nickname: string | null;
+  serial_number: string | null;
+  status: string;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  current_value: number | null;
+  seller: string | null;
+  warranty: string | null;
+  material: string | null;
+  finish: string | null;
+  color: string | null;
+  weight_g: number | null;
+  dimensions: string | null;
+  storage_location: string | null;
+  is_favorite: number;
+  is_carried: number;
+  cover_photo: string | null;
+  gallery: string[];
+  notes: string | null;
+  specs: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ItemInsert = Omit<Item, 'created_at' | 'updated_at' | 'gallery' | 'specs'> & {
+  gallery?: string[];
+  specs?: Record<string, any>;
+};
+
+const SCHEMA_VERSION = '2';
+
 export function initDatabase() {
-  db.execAsync(`
-    CREATE TABLE IF NOT EXISTS fountain_pens (
-      id TEXT PRIMARY KEY NOT NULL,
-      brand TEXT NOT NULL,
-      model TEXT NOT NULL,
+  db.execSync(`CREATE TABLE IF NOT EXISTS db_meta (key TEXT PRIMARY KEY, value TEXT);`);
 
-      nib_material TEXT,
-      nib_size TEXT,
-      nib_unit TEXT CHECK (
-        nib_unit IN ('jowo', 'bock', 'schmidt', 'proprietary', 'other')
-      ),
+  const row = db.getFirstSync<{ value: string }>(
+    `SELECT value FROM db_meta WHERE key = 'schema_version';`
+  );
 
-      filling_mechanism TEXT CHECK (
-        filling_mechanism IN (
-          'c_c',
-          'cartridge_only',
-          'eyedropper',
-          'piston',
-          'vac',
-          'other'
-        )
-      ),
+  if (!row || row.value !== SCHEMA_VERSION) {
+    db.execSync(`
+      DROP TABLE IF EXISTS fountain_pens;
+      DROP TABLE IF EXISTS machined_pens;
+      DROP TABLE IF EXISTS log_entries;
+      DROP TABLE IF EXISTS items;
+      DROP TABLE IF EXISTS collections;
+      DROP TABLE IF EXISTS item_collections;
+      DROP TABLE IF EXISTS tags;
+      DROP TABLE IF EXISTS item_tags;
 
-      body_material TEXT,
-      color_finish TEXT,
+      CREATE TABLE items (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_type TEXT NOT NULL,
+        name TEXT,
+        manufacturer TEXT,
+        model TEXT,
+        variant TEXT,
+        nickname TEXT,
+        serial_number TEXT,
+        status TEXT DEFAULT 'own' CHECK (status IN ('own','sold','lost','gifted','wishlist')),
+        purchase_date TEXT,
+        purchase_price REAL,
+        current_value REAL,
+        seller TEXT,
+        warranty TEXT,
+        material TEXT,
+        finish TEXT,
+        color TEXT,
+        weight_g REAL,
+        dimensions TEXT,
+        storage_location TEXT,
+        is_favorite INTEGER DEFAULT 0,
+        is_carried INTEGER DEFAULT 0,
+        cover_photo TEXT,
+        gallery TEXT DEFAULT '[]',
+        notes TEXT,
+        specs TEXT DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
 
-      currently_inked INTEGER DEFAULT 0,
-      current_ink TEXT,
-      last_used TEXT
-    );
+      CREATE TABLE collections (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        created_at TEXT NOT NULL
+      );
 
-    CREATE TABLE IF NOT EXISTS machined_pens (
-      id TEXT PRIMARY KEY NOT NULL,
-      brand TEXT NOT NULL,
-      model TEXT NOT NULL,
+      CREATE TABLE item_collections (
+        item_id TEXT NOT NULL,
+        collection_id TEXT NOT NULL,
+        PRIMARY KEY (item_id, collection_id)
+      );
 
-      material TEXT,
-      finish TEXT,
+      CREATE TABLE tags (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL
+      );
 
-      mechanism TEXT CHECK (
-        mechanism IN (
-          'bolt',
-          'click',
-          'twist',
-          'capped',
-          'double_lock',
-          'cam',
-          'continuous_twist'
-        )
-      ),
+      CREATE TABLE item_tags (
+        item_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        PRIMARY KEY (item_id, tag_id)
+      );
 
-      refill_standard TEXT CHECK (
-        refill_standard IN (
-          'parker',
-          'asian',
-          'fisher',
-          'd1',
-          'energel',
-          'g2_mini',
-          'lamy_m22',
-          'montblanc'
-        )
-      ),
+      CREATE TABLE log_entries (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_id TEXT NOT NULL,
+        item_type TEXT NOT NULL,
+        entry_type TEXT NOT NULL CHECK (entry_type IN ('carried','maintenance','note','ink_change','config_change')),
+        entry_date TEXT NOT NULL,
+        notes TEXT,
+        condition TEXT,
+        created_at TEXT NOT NULL
+      );
 
-      refill_brand TEXT,
-      refill_model TEXT,
-      refill_color TEXT,
-      refill_size_mm REAL,
-
-      customization TEXT
-    );
-  `);
+      INSERT OR REPLACE INTO db_meta (key, value) VALUES ('schema_version', '2');
+    `);
+  }
 }
 
 /* ============================================================
-   FOUNTAIN PEN FUNCTIONS
+   ITEM FUNCTIONS
    ============================================================ */
 
-export async function insertFountainPen(data: {
-  id: string;
-  brand: string;
-  model: string;
-  nib_material?: string;
-  nib_size?: string;
-  nib_unit?: string;
-  filling_mechanism?: string;
-  body_material?: string;
-  color_finish?: string;
-  currently_inked?: boolean;
-  current_ink?: string;
-  last_used?: string;
-}) {
+function parseItem(row: any): Item {
+  return {
+    ...row,
+    gallery: row.gallery ? JSON.parse(row.gallery) : [],
+    specs: row.specs ? JSON.parse(row.specs) : {},
+  };
+}
+
+export async function insertItem(data: ItemInsert): Promise<void> {
+  const now = new Date().toISOString();
   await db.runAsync(
-    `
-    INSERT INTO fountain_pens (
-      id,
-      brand,
-      model,
-      nib_material,
-      nib_size,
-      nib_unit,
-      filling_mechanism,
-      body_material,
-      color_finish,
-      currently_inked,
-      current_ink,
-      last_used
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `,
+    `INSERT INTO items (
+      id, item_type, name, manufacturer, model, variant, nickname, serial_number,
+      status, purchase_date, purchase_price, current_value, seller, warranty,
+      material, finish, color, weight_g, dimensions, storage_location,
+      is_favorite, is_carried, cover_photo, gallery, notes, specs,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
-      data.id,
-      data.brand,
-      data.model,
-      data.nib_material ?? null,
-      data.nib_size ?? null,
-      data.nib_unit ?? null,
-      data.filling_mechanism ?? null,
-      data.body_material ?? null,
-      data.color_finish ?? null,
-      data.currently_inked ? 1 : 0,
-      data.current_ink ?? null,
-      data.last_used ?? null,
+      data.id, data.item_type, data.name ?? null, data.manufacturer ?? null,
+      data.model ?? null, data.variant ?? null, data.nickname ?? null, data.serial_number ?? null,
+      data.status ?? 'own', data.purchase_date ?? null, data.purchase_price ?? null,
+      data.current_value ?? null, data.seller ?? null, data.warranty ?? null,
+      data.material ?? null, data.finish ?? null, data.color ?? null,
+      data.weight_g ?? null, data.dimensions ?? null, data.storage_location ?? null,
+      data.is_favorite ?? 0, data.is_carried ?? 0, data.cover_photo ?? null,
+      JSON.stringify(data.gallery ?? []), data.notes ?? null,
+      JSON.stringify(data.specs ?? {}),
+      now, now,
     ]
   );
 }
 
-export async function fetchFountainPens() {
-  return await db.getAllAsync(
-    `SELECT * FROM fountain_pens ORDER BY brand, model;`
+export async function updateItem(id: string, data: Partial<ItemInsert>): Promise<void> {
+  const now = new Date().toISOString();
+  const entries = Object.entries(data);
+  if (entries.length === 0) return;
+
+  const setClauses = entries.map(([k]) => `${k} = ?`).join(', ');
+  const values: (string | number | null)[] = entries.map(([k, v]) => {
+    if (k === 'gallery') return JSON.stringify(v ?? []);
+    if (k === 'specs') return JSON.stringify(v ?? {});
+    if (v === undefined) return null;
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    return (v as string | number | null);
+  });
+
+  await db.runAsync(
+    `UPDATE items SET ${setClauses}, updated_at = ? WHERE id = ?;`,
+    [...values, now, id]
   );
 }
 
-export async function fetchFountainPenById(id: string) {
-  const result = await db.getAllAsync(
-    `SELECT * FROM fountain_pens WHERE id = ? LIMIT 1;`,
-    [id]
-  );
-  return result[0];
+export async function deleteItem(id: string): Promise<void> {
+  await db.runAsync(`DELETE FROM item_collections WHERE item_id = ?;`, [id]);
+  await db.runAsync(`DELETE FROM item_tags WHERE item_id = ?;`, [id]);
+  await db.runAsync(`DELETE FROM log_entries WHERE item_id = ?;`, [id]);
+  await db.runAsync(`DELETE FROM items WHERE id = ?;`, [id]);
+}
+
+export async function fetchItems(filters?: { item_type?: string }): Promise<Item[]> {
+  let query = `SELECT * FROM items`;
+  const params: any[] = [];
+  if (filters?.item_type) {
+    query += ` WHERE item_type = ?`;
+    params.push(filters.item_type);
+  }
+  query += ` ORDER BY manufacturer, model;`;
+  const rows = await db.getAllAsync(query, params) as any[];
+  return rows.map(parseItem);
+}
+
+export async function fetchItemById(id: string): Promise<Item | undefined> {
+  const rows = await db.getAllAsync(`SELECT * FROM items WHERE id = ? LIMIT 1;`, [id]) as any[];
+  return rows.length > 0 ? parseItem(rows[0]) : undefined;
 }
 
 /* ============================================================
-   MACHINED PEN FUNCTIONS
+   COLLECTION FUNCTIONS
    ============================================================ */
 
-export async function insertMachinedPen(data: {
-  id: string;
-  brand: string;
-  model: string;
-  material?: string;
-  finish?: string;
-  mechanism?: string;
-  refill_standard?: string;
-  refill_brand?: string;
-  refill_model?: string;
-  refill_color?: string;
-  refill_size_mm?: number;
-  customization?: string;
-}) {
+export async function insertCollection(name: string, description?: string): Promise<string> {
+  const id = Date.now().toString();
+  const now = new Date().toISOString();
   await db.runAsync(
-    `
-    INSERT INTO machined_pens (
-      id,
-      brand,
-      model,
-      material,
-      finish,
-      mechanism,
-      refill_standard,
-      refill_brand,
-      refill_model,
-      refill_color,
-      refill_size_mm,
-      customization
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `,
-    [
-      data.id,
-      data.brand,
-      data.model,
-      data.material ?? null,
-      data.finish ?? null,
-      data.mechanism ?? null,
-      data.refill_standard ?? null,
-      data.refill_brand ?? null,
-      data.refill_model ?? null,
-      data.refill_color ?? null,
-      data.refill_size_mm ?? null,
-      data.customization ?? null,
-    ]
+    `INSERT INTO collections (id, name, description, created_at) VALUES (?, ?, ?, ?);`,
+    [id, name, description ?? null, now]
+  );
+  return id;
+}
+
+export async function fetchCollections(): Promise<{ id: string; name: string; description: string | null }[]> {
+  return await db.getAllAsync(`SELECT id, name, description FROM collections ORDER BY name;`) as any[];
+}
+
+export async function addItemToCollection(itemId: string, collectionId: string): Promise<void> {
+  await db.runAsync(
+    `INSERT OR IGNORE INTO item_collections (item_id, collection_id) VALUES (?, ?);`,
+    [itemId, collectionId]
   );
 }
 
-export async function fetchMachinedPens() {
+export async function removeItemFromCollection(itemId: string, collectionId: string): Promise<void> {
+  await db.runAsync(
+    `DELETE FROM item_collections WHERE item_id = ? AND collection_id = ?;`,
+    [itemId, collectionId]
+  );
+}
+
+export async function fetchCollectionsForItem(itemId: string): Promise<{ id: string; name: string }[]> {
   return await db.getAllAsync(
-    `SELECT * FROM machined_pens ORDER BY brand, model;`
+    `SELECT c.id, c.name FROM collections c
+     JOIN item_collections ic ON ic.collection_id = c.id
+     WHERE ic.item_id = ? ORDER BY c.name;`,
+    [itemId]
+  ) as any[];
+}
+
+export async function fetchItemIdsInCollection(collectionId: string): Promise<string[]> {
+  const rows = await db.getAllAsync(
+    `SELECT item_id FROM item_collections WHERE collection_id = ?;`,
+    [collectionId]
+  ) as { item_id: string }[];
+  return rows.map((r) => r.item_id);
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  await db.runAsync(`DELETE FROM item_collections WHERE collection_id = ?;`, [id]);
+  await db.runAsync(`DELETE FROM collections WHERE id = ?;`, [id]);
+}
+
+/* ============================================================
+   TAG FUNCTIONS
+   ============================================================ */
+
+export async function upsertTag(name: string): Promise<string> {
+  const existing = await db.getAllAsync(`SELECT id FROM tags WHERE name = ? LIMIT 1;`, [name]) as any[];
+  if (existing.length > 0) return (existing[0] as any).id;
+  const id = Date.now().toString();
+  const now = new Date().toISOString();
+  await db.runAsync(`INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?);`, [id, name, now]);
+  return id;
+}
+
+export async function addTagToItem(itemId: string, tagId: string): Promise<void> {
+  await db.runAsync(
+    `INSERT OR IGNORE INTO item_tags (item_id, tag_id) VALUES (?, ?);`,
+    [itemId, tagId]
   );
 }
 
-export async function fetchMachinedPenById(id: string) {
-  const result = await db.getAllAsync(
-    `SELECT * FROM machined_pens WHERE id = ? LIMIT 1;`,
-    [id]
+export async function removeTagFromItem(itemId: string, tagId: string): Promise<void> {
+  await db.runAsync(
+    `DELETE FROM item_tags WHERE item_id = ? AND tag_id = ?;`,
+    [itemId, tagId]
   );
-  return result[0];
+}
+
+export async function fetchTagsForItem(itemId: string): Promise<{ id: string; name: string }[]> {
+  return await db.getAllAsync(
+    `SELECT t.id, t.name FROM tags t
+     JOIN item_tags it ON it.tag_id = t.id
+     WHERE it.item_id = ? ORDER BY t.name;`,
+    [itemId]
+  ) as any[];
+}
+
+export async function fetchAllTags(): Promise<{ id: string; name: string }[]> {
+  return await db.getAllAsync(`SELECT id, name FROM tags ORDER BY name;`) as any[];
+}
+
+export async function fetchItemIdsForTag(tagId: string): Promise<string[]> {
+  const rows = await db.getAllAsync(
+    `SELECT item_id FROM item_tags WHERE tag_id = ?;`,
+    [tagId]
+  ) as { item_id: string }[];
+  return rows.map((r) => r.item_id);
+}
+
+/* ============================================================
+   LOG ENTRY FUNCTIONS
+   ============================================================ */
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function insertLogEntry(
+  id: string,
+  itemId: string,
+  notes?: string,
+  condition?: string,
+  options?: {
+    itemType?: string;
+    entryType?: LogEntryType;
+    entryDate?: string;
+  }
+): Promise<void> {
+  const itemType = options?.itemType ?? 'unknown';
+  const entryType = options?.entryType ?? 'note';
+  const entryDate = options?.entryDate ?? todayString();
+  const createdAt = new Date().toISOString();
+
+  await db.runAsync(
+    `INSERT INTO log_entries (id, item_id, item_type, entry_type, entry_date, notes, condition, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+    [id, itemId, itemType, entryType, entryDate, notes ?? null, condition ?? null, createdAt]
+  );
+}
+
+export async function toggleCarried(
+  itemId: string,
+  itemType: string,
+  entryDate: string
+): Promise<boolean> {
+  const existing = await db.getAllAsync(
+    `SELECT id FROM log_entries WHERE item_id = ? AND item_type = ? AND entry_type = 'carried' AND entry_date = ? LIMIT 1;`,
+    [itemId, itemType, entryDate]
+  ) as { id: string }[];
+
+  if (existing.length > 0) {
+    await db.runAsync(`DELETE FROM log_entries WHERE id = ?;`, [existing[0].id]);
+    return false;
+  } else {
+    const id = `${itemId}_${entryDate}_carried`;
+    const createdAt = new Date().toISOString();
+    await db.runAsync(
+      `INSERT INTO log_entries (id, item_id, item_type, entry_type, entry_date, notes, condition, created_at)
+       VALUES (?, ?, ?, 'carried', ?, NULL, NULL, ?);`,
+      [id, itemId, itemType, entryDate, createdAt]
+    );
+    return true;
+  }
+}
+
+export async function fetchCarriedItemIdsForDate(
+  entryDate: string
+): Promise<{ item_id: string; item_type: string }[]> {
+  return await db.getAllAsync(
+    `SELECT item_id, item_type FROM log_entries WHERE entry_type = 'carried' AND entry_date = ?;`,
+    [entryDate]
+  ) as { item_id: string; item_type: string }[];
+}
+
+export async function fetchLogEntriesForItem(
+  itemId: string,
+  itemType: string
+): Promise<{
+  id: string;
+  entry_type: LogEntryType;
+  entry_date: string;
+  notes: string | null;
+  condition: string | null;
+  created_at: string;
+}[]> {
+  return await db.getAllAsync(
+    `SELECT id, entry_type, entry_date, notes, condition, created_at
+     FROM log_entries
+     WHERE item_id = ? AND item_type = ? AND entry_type != 'carried'
+     ORDER BY entry_date DESC, created_at DESC;`,
+    [itemId, itemType]
+  ) as any[];
+}
+
+export async function fetchInkStats(): Promise<{ ink: string; count: number }[]> {
+  return await db.getAllAsync(
+    `SELECT notes as ink, COUNT(*) as count
+     FROM log_entries
+     WHERE entry_type = 'ink_change' AND notes IS NOT NULL AND notes != ''
+     GROUP BY notes
+     ORDER BY count DESC;`
+  ) as { ink: string; count: number }[];
+}
+
+export async function fetchCarryDatesForItem(itemId: string): Promise<string[]> {
+  const rows = await db.getAllAsync(
+    `SELECT DISTINCT entry_date FROM log_entries WHERE item_id = ? AND entry_type = 'carried' ORDER BY entry_date;`,
+    [itemId]
+  ) as { entry_date: string }[];
+  return rows.map((r) => r.entry_date);
+}
+
+export async function fetchMostCarried(options?: {
+  sinceDate?: string;
+}): Promise<{ item_id: string; item_type: string; days_carried: number }[]> {
+  if (options?.sinceDate) {
+    return await db.getAllAsync(
+      `SELECT item_id, item_type, COUNT(DISTINCT entry_date) as days_carried
+       FROM log_entries
+       WHERE entry_type = 'carried' AND entry_date >= ?
+       GROUP BY item_id, item_type
+       ORDER BY days_carried DESC;`,
+      [options.sinceDate]
+    ) as any[];
+  }
+  return await db.getAllAsync(
+    `SELECT item_id, item_type, COUNT(DISTINCT entry_date) as days_carried
+     FROM log_entries
+     WHERE entry_type = 'carried'
+     GROUP BY item_id, item_type
+     ORDER BY days_carried DESC;`
+  ) as any[];
 }
 
 export default db;

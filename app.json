@@ -13,7 +13,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dsabh.fieldlog",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +29,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-web-browser",
+      "expo-apple-authentication"
     ]
   }
 }
